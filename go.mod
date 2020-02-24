@@ -23,7 +23,7 @@ require (
 	github.com/decred/dcrwallet/spv/v3 v3.0.1
 	github.com/decred/dcrwallet/ticketbuyer v1.0.2
 	github.com/decred/dcrwallet/ticketbuyer/v4 v4.0.1
-	github.com/decred/dcrwallet/wallet/v3 v3.1.0
+	github.com/decred/dcrwallet/wallet/v3 v3.2.1-badger
 	github.com/decred/dcrwallet/walletseed v1.0.2
 	github.com/decred/slog v1.0.0
 	github.com/dgraph-io/badger v1.5.4
@@ -35,6 +35,10 @@ require (
 	github.com/stretchr/testify v1.3.0 // indirect
 	go.etcd.io/bbolt v1.3.3
 	google.golang.org/appengine v1.5.0 // indirect
+)
+
+replace (
+	github.com/decred/dcrwallet/wallet/v3 => github.com/raedahgroup/dcrwallet/wallet/v3 v3.2.1-badger
 )
 
 go 1.13
