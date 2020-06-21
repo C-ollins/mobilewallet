@@ -26,8 +26,8 @@ require (
 	github.com/decred/dcrwallet/wallet/v3 v3.2.1-badger
 	github.com/decred/dcrwallet/walletseed v1.0.1
 	github.com/decred/slog v1.0.0
-	github.com/dgraph-io/badger v1.6.1
-	github.com/golang/snappy v0.0.1 // indirect
+	github.com/dgraph-io/badger v1.6.1 // indirect
+	github.com/dgraph-io/badger/v2 v2.0.3
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/jrick/logrotate v1.0.0
 	github.com/kevinburke/nacl v0.0.0-20190829012316-f3ed23dbd7f8
@@ -36,6 +36,7 @@ require (
 	github.com/planetdecred/dcrlibwallet/spv v0.0.0-00010101000000-000000000000
 	go.etcd.io/bbolt v1.3.3
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
+	golang.org/x/mobile v0.0.0-20200329125638-4c31acba0007 // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898 // indirect
 	google.golang.org/appengine v1.5.0 // indirect
