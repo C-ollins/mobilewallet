@@ -2,6 +2,7 @@ package badgerdb
 
 import (
 	"bytes"
+	"fmt"
 
 	"decred.org/dcrwallet/errors"
 	"github.com/dgraph-io/badger"
@@ -152,6 +153,7 @@ func (b *Bucket) dropBucket(key []byte) error {
 	if err != nil {
 		return err
 	}
+
 	item, err := b.txn.Get(prefix)
 	if err != nil {
 		return convertErr(err)
@@ -160,24 +162,34 @@ func (b *Bucket) dropBucket(key []byte) error {
 	if item.UserMeta() != metaBucket {
 		return errors.E(errors.Invalid, "key is not associated with a bucket")
 	}
-	b.txn.Delete(item.Key()[:])
-	txn := b.dbTransaction.db.NewTransaction(false)
-	it := txn.NewIterator(badger.DefaultIteratorOptions)
 
-	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-		item = it.Item()
-		val, err := item.Value()
+	fmt.Printf("Found bucket key: %s, meta: %d\n", item.Key(), item.UserMeta())
+
+	cf := []byte("cf")
+	count := 0
+	nestedBucket := b.NestedReadWriteBucket(key)
+	err = nestedBucket.ForEach(func(k, value []byte) error {
+		err = nestedBucket.Delete(k)
 		if err != nil {
-			continue
+			fmt.Println("Error dropping bucket key:", err)
+
+			return err
 		}
-		prefixLength := int(val[0])
-		if bytes.Equal(item.Key()[:prefixLength], b.prefix) {
-			b.txn.Delete(item.Key()[:])
-		}
+		count++
+		return nil
+	})
+	if err != nil {
+		return convertErr(err)
 	}
-	it.Close()
-	txn.Discard()
-	return nil
+
+	if bytes.Equal(cf, key) {
+		fmt.Println("Counted keys:", count)
+	}
+
+	err = b.txn.Delete(prefix)
+	fmt.Println("Deleting bucket:", prefix, " meta:", item.UserMeta())
+	fmt.Println("Error dropping bucket:", err)
+	return convertErr(err)
 }
 
 func (b *Bucket) get(key []byte) []byte {
@@ -227,6 +239,7 @@ func (b *Bucket) delete(key []byte) error {
 	if err != nil {
 		return err
 	}
+	
 	err = b.txn.Delete(k)
 	if err == badger.ErrKeyNotFound {
 		return nil
