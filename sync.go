@@ -2,14 +2,17 @@ package dcrlibwallet
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net"
+	"sort"
 	"strings"
 	"sync"
 
+	"decred.org/dcrwallet/errors"
+	"decred.org/dcrwallet/p2p"
+	w "decred.org/dcrwallet/wallet"
 	"github.com/decred/dcrd/addrmgr"
-	"github.com/decred/dcrwallet/errors/v2"
-	"github.com/decred/dcrwallet/p2p/v2"
-	w "github.com/decred/dcrwallet/wallet/v3"
 	"github.com/planetdecred/dcrlibwallet/spv"
 )
 
@@ -37,11 +40,19 @@ type syncData struct {
 
 // reading/writing of properties of this struct are protected by syncData.mu.
 type activeSyncData struct {
+	syncer *spv.Syncer
+
 	syncStage int32
 
+	cfiltersFetchProgress    CFiltersFetchProgressReport
 	headersFetchProgress     HeadersFetchProgressReport
 	addressDiscoveryProgress AddressDiscoveryProgressReport
 	headersRescanProgress    HeadersRescanProgressReport
+
+	beginFetchCFiltersTimeStamp int64
+	startCFiltersHeight         int32
+	cfiltersFetchTimeSpent      int64
+	totalFetchedCFiltersCount   int32
 
 	beginFetchTimeStamp   int64
 	startHeaderHeight     int32
@@ -60,12 +71,17 @@ type activeSyncData struct {
 
 const (
 	InvalidSyncStage          = -1
-	HeadersFetchSyncStage     = 0
-	AddressDiscoverySyncStage = 1
-	HeadersRescanSyncStage    = 2
+	CFiltersFetchSyncStage    = 0
+	HeadersFetchSyncStage     = 1
+	AddressDiscoverySyncStage = 2
+	HeadersRescanSyncStage    = 3
 )
 
 func (mw *MultiWallet) initActiveSyncData() {
+
+	cfiltersFetchProgress := CFiltersFetchProgressReport{}
+	cfiltersFetchProgress.GeneralSyncProgress = &GeneralSyncProgress{}
+
 	headersFetchProgress := HeadersFetchProgressReport{}
 	headersFetchProgress.GeneralSyncProgress = &GeneralSyncProgress{}
 
@@ -79,9 +95,15 @@ func (mw *MultiWallet) initActiveSyncData() {
 	mw.syncData.activeSyncData = &activeSyncData{
 		syncStage: InvalidSyncStage,
 
+		cfiltersFetchProgress:    cfiltersFetchProgress,
 		headersFetchProgress:     headersFetchProgress,
 		addressDiscoveryProgress: addressDiscoveryProgress,
 		headersRescanProgress:    headersRescanProgress,
+
+		beginFetchCFiltersTimeStamp: -1,
+		startCFiltersHeight:         -1,
+		cfiltersFetchTimeSpent:      -1,
+		totalFetchedCFiltersCount:   0,
 
 		beginFetchTimeStamp:       -1,
 		headersFetchTimeSpent:     -1,
@@ -210,7 +232,7 @@ func (mw *MultiWallet) SpvSync() error {
 	wallets := make(map[int]*w.Wallet)
 	for id, wallet := range mw.wallets {
 		wallets[id] = wallet.internal
-		wallet.waiting = true
+		wallet.waitingForHeaders = true
 		wallet.syncing = true
 	}
 
@@ -219,8 +241,6 @@ func (mw *MultiWallet) SpvSync() error {
 	if len(validPeerAddresses) > 0 {
 		syncer.SetPersistentPeers(validPeerAddresses)
 	}
-
-	mw.setNetworkBackend(syncer)
 
 	ctx, cancel := mw.contextWithShutdownCancel()
 
@@ -232,6 +252,7 @@ func (mw *MultiWallet) SpvSync() error {
 	mw.syncData.syncing = true
 	mw.syncData.cancelSync = cancel
 	mw.syncData.syncCanceled = make(chan struct{})
+	mw.syncData.syncer = syncer
 	mw.syncData.mu.Unlock()
 
 	for _, listener := range mw.syncProgressListeners() {
@@ -289,19 +310,10 @@ func (mw *MultiWallet) CancelSync() {
 
 		log.Info("Sync fully canceled.")
 	}
-
-	for _, libWallet := range mw.wallets {
-		loadedWallet, walletLoaded := libWallet.loader.LoadedWallet()
-		if !walletLoaded {
-			continue
-		}
-
-		loadedWallet.SetNetworkBackend(nil)
-	}
 }
 
 func (wallet *Wallet) IsWaiting() bool {
-	return wallet.waiting
+	return wallet.waitingForHeaders
 }
 
 func (wallet *Wallet) IsSynced() bool {
@@ -362,6 +374,46 @@ func (mw *MultiWallet) ConnectedPeers() int32 {
 	mw.syncData.mu.RLock()
 	defer mw.syncData.mu.RUnlock()
 	return mw.syncData.connectedPeers
+}
+
+func (mw *MultiWallet) PeerInfoRaw() ([]PeerInfo, error) {
+	if !mw.IsConnectedToDecredNetwork() {
+		return nil, errors.New(ErrNotConnected)
+	}
+
+	syncer := mw.syncData.syncer
+
+	infos := make([]PeerInfo, 0, len(syncer.GetRemotePeers()))
+	for _, rp := range syncer.GetRemotePeers() {
+		info := PeerInfo{
+			ID:             int32(rp.ID()),
+			Addr:           rp.RemoteAddr().String(),
+			AddrLocal:      rp.LocalAddr().String(),
+			Services:       fmt.Sprintf("%08d", uint64(rp.Services())),
+			Version:        rp.Pver(),
+			SubVer:         rp.UA(),
+			StartingHeight: int64(rp.InitialHeight()),
+			BanScore:       int32(rp.BanScore()),
+		}
+
+		infos = append(infos, info)
+	}
+
+	sort.Slice(infos, func(i, j int) bool {
+		return infos[i].ID < infos[j].ID
+	})
+
+	return infos, nil
+}
+
+func (mw *MultiWallet) PeerInfo() (string, error) {
+	infos, err := mw.PeerInfoRaw()
+	if err != nil {
+		return "", err
+	}
+
+	result, _ := json.Marshal(infos)
+	return string(result), nil
 }
 
 func (mw *MultiWallet) GetBestBlock() *BlockInfo {

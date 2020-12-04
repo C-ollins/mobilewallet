@@ -1,6 +1,6 @@
 package dcrlibwallet
 
-import "github.com/decred/dcrwallet/wallet/v3"
+import "decred.org/dcrwallet/wallet"
 
 type WalletsIterator struct {
 	currentIndex int
@@ -63,11 +63,23 @@ type Accounts struct {
 	CurrentBlockHeight int32
 }
 
+type PeerInfo struct {
+	ID             int32  `json:"id"`
+	Addr           string `json:"addr"`
+	AddrLocal      string `json:"addr_local"`
+	Services       string `json:"services"`
+	Version        uint32 `json:"version"`
+	SubVer         string `json:"sub_ver"`
+	StartingHeight int64  `json:"starting_height"`
+	BanScore       int32  `json:"ban_score"`
+}
+
 /** begin sync-related types */
 
 type SyncProgressListener interface {
 	OnSyncStarted(wasRestarted bool)
 	OnPeerConnectedOrDisconnected(numberOfConnectedPeers int32)
+	OnCFiltersFetchProgress(cfiltersFetchProgress *CFiltersFetchProgressReport)
 	OnHeadersFetchProgress(headersFetchProgress *HeadersFetchProgressReport)
 	OnAddressDiscoveryProgress(addressDiscoveryProgress *AddressDiscoveryProgressReport)
 	OnHeadersRescanProgress(headersRescanProgress *HeadersRescanProgressReport)
@@ -80,6 +92,13 @@ type SyncProgressListener interface {
 type GeneralSyncProgress struct {
 	TotalSyncProgress         int32 `json:"totalSyncProgress"`
 	TotalTimeRemainingSeconds int64 `json:"totalTimeRemainingSeconds"`
+}
+
+type CFiltersFetchProgressReport struct {
+	*GeneralSyncProgress
+	TotalCFiltersToFetch  int32 `json:"totalCFiltersToFetch"`
+	CurrentCFilterHeight  int32 `json:"currentCFilterHeight"`
+	CFiltersFetchProgress int32 `json:"headersFetchProgress"`
 }
 
 type HeadersFetchProgressReport struct {
@@ -309,6 +328,8 @@ type Proposal struct {
 type Proposals struct {
 	Proposals []Proposal `json:"proposals"`
 }
+
+/** end politea proposal types */
 
 type UnspentOutput struct {
 	TransactionHash []byte

@@ -13,18 +13,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/decred/dcrd/chaincfg/v2"
-	"github.com/decred/dcrd/dcrutil/v2"
-	"github.com/decred/dcrd/hdkeychain/v2"
-	"github.com/decred/dcrwallet/errors/v2"
-	"github.com/decred/dcrwallet/wallet/v3"
-	"github.com/decred/dcrwallet/wallet/v3/txrules"
-	"github.com/decred/dcrwallet/walletseed"
+	"decred.org/dcrwallet/errors"
+	"decred.org/dcrwallet/wallet"
+	"decred.org/dcrwallet/wallet/txrules"
+	"decred.org/dcrwallet/walletseed"
+	"github.com/decred/dcrd/chaincfg/v3"
+	"github.com/decred/dcrd/dcrutil/v3"
+	"github.com/decred/dcrd/hdkeychain/v3"
 	"github.com/planetdecred/dcrlibwallet/internal/loader"
 )
 
 const (
 	walletDbName = "wallet.db"
+
+	// FetchPercentage is used to increase the initial estimate gotten during cfilters stage
+	FetchPercentage = 0.38
 
 	// Use 10% of estimated total headers fetch time to estimate rescan time
 	RescanPercentage = 0.1
@@ -279,14 +282,13 @@ func backupFile(fileName string, suffix int) (newName string, err error) {
 }
 
 func initWalletLoader(chainParams *chaincfg.Params, walletDataDir, walletDbDriver string) *loader.Loader {
-	defaultFeePerKb := txrules.DefaultRelayFeePerKb.ToCoin()
 	stakeOptions := &loader.StakeOptions{
 		VotingEnabled: false,
 		AddressReuse:  false,
 		VotingAddress: nil,
-		TicketFee:     defaultFeePerKb,
 	}
 
+	defaultFeePerKb := txrules.DefaultRelayFeePerKb
 	walletLoader := loader.NewLoader(chainParams, walletDataDir, stakeOptions, 20, false,
 		defaultFeePerKb, wallet.DefaultAccountGapLimit, false)
 
