@@ -167,26 +167,33 @@ func (b *Bucket) dropBucket(key []byte) error {
 
 	fmt.Printf("Found bucket key: %s, meta: %d\n", item.Key(), item.UserMeta())
 
-	cf := []byte("cf")
-	count := 0
-	nestedBucket := b.NestedReadWriteBucket(key)
-	err = nestedBucket.ForEach(func(k, value []byte) error {
-		err = nestedBucket.Delete(k)
-		if err != nil {
-			fmt.Println("Error dropping bucket key:", err)
+	// cf := []byte("cf")
+	// count := 0
+	// nestedBucket := b.NestedReadWriteBucket(key)
+	// err = nestedBucket.ForEach(func(k, value []byte) error {
+	// 	err = nestedBucket.Delete(k)
+	// 	if err != nil {
+	// 		fmt.Println("Error dropping bucket key:", err)
 
-			return err
-		}
-		count++
-		return nil
-	})
+	// 		return err
+	// 	}
+	// 	count++
+	// 	return nil
+	// })
+	fmt.Println("Dropping all prefixes")
+	err = b.dbTransaction.db.DropPrefix(prefix)
+	if err != nil {
+		fmt.Println("Error dropping bucket prefixes:", err)
+
+		return err
+	}
 	if err != nil {
 		return convertErr(err)
 	}
 
-	if bytes.Equal(cf, key) {
-		fmt.Println("Counted keys:", count)
-	}
+	// if bytes.Equal(cf, key) {
+	// 	fmt.Println("Counted keys:", count)
+	// }
 
 	err = b.txn.Delete(prefix)
 	fmt.Println("Deleting bucket:", prefix, " meta:", item.UserMeta())
@@ -241,7 +248,7 @@ func (b *Bucket) delete(key []byte) error {
 	if err != nil {
 		return err
 	}
-	
+
 	err = b.txn.Delete(k)
 	if err == badger.ErrKeyNotFound {
 		return nil

@@ -75,7 +75,7 @@ func (mw *MultiWallet) fetchCFiltersProgress(walletID int, startCFiltersHeight, 
 	}
 
 	wallet := mw.WalletWithID(walletID)
-	mw.syncData.activeSyncData.totalFetchedCFiltersCount += endCFiltersHeight - startCFiltersHeight
+	mw.syncData.activeSyncData.totalFetchedCFiltersCount = endCFiltersHeight - mw.syncData.activeSyncData.startCFiltersHeight
 
 	totalCFiltersToFetch := wallet.GetBestBlock() - mw.syncData.activeSyncData.startCFiltersHeight
 	// cfiltersLeftToFetch := totalCFiltersToFetch - mw.syncData.activeSyncData.totalFetchedCFiltersCount
@@ -110,7 +110,7 @@ func (mw *MultiWallet) fetchCFiltersProgress(walletID int, startCFiltersHeight, 
 
 	// update headers fetching progress report including total progress percentage and total time remaining
 	mw.syncData.activeSyncData.cfiltersFetchProgress.TotalCFiltersToFetch = totalCFiltersToFetch
-	mw.syncData.activeSyncData.cfiltersFetchProgress.CurrentCFilterHeight = startCFiltersHeight
+	mw.syncData.activeSyncData.cfiltersFetchProgress.CurrentCFilterHeight = endCFiltersHeight
 	mw.syncData.activeSyncData.cfiltersFetchProgress.CFiltersFetchProgress = roundUp(cfiltersFetchProgress * 100.0)
 	mw.syncData.activeSyncData.cfiltersFetchProgress.TotalSyncProgress = roundUp(totalSyncProgress * 100.0)
 	mw.syncData.activeSyncData.cfiltersFetchProgress.TotalTimeRemainingSeconds = totalTimeRemainingSeconds

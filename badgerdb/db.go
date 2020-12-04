@@ -40,8 +40,8 @@ func convertErr(err error) error {
 // provides a root bucket against which all read and writes occur.
 type transaction struct {
 	badgerTx *badger.Txn
-	db       *db
-	buckets  []*Bucket
+	db      *db
+	buckets []*Bucket
 
 	writable    bool
 	isDiscarded bool
