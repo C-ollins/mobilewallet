@@ -47,6 +47,7 @@ replace (
 	decred.org/dcrwallet => decred.org/dcrwallet v1.2.3-0.20191024200307-d273b5687adf
 	github.com/decred/dcrwallet/wallet/v3 => github.com/raedahgroup/dcrwallet/wallet/v3 v3.2.1-badger
 	github.com/planetdecred/dcrlibwallet/spv => ./spv
+	go.etcd.io/bbolt => github.com/C-ollins/bbolt v1.3.1-0.20210329174255-75bb7e58d9f0
 )
 
 go 1.13
